@@ -26,7 +26,7 @@ const properties = reactive({
   lineWidth: 1,
   scale: 10,
   imageRenderer: 'pixelated',
-  opacity: 255,
+  opacity: 128,
   lineCap: 'square',
   lineJoin: 'miter',
   globalCompositeOperation: 'source-over'
