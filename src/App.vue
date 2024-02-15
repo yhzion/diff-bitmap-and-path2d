@@ -1,13 +1,24 @@
 <script setup lang="ts">
 import PixelDrawExample from './PixelDrawExample.vue'
 import type Example from './Example'
-const examples: Example[] = [{ width: 50, height: 50 }]
+import { ref } from 'vue'
+const examples: Example[] = [{ width: 30, height: 30 }]
+const changeResolution = (index: number, width: number, height: number) => {
+  examples[index].width = width
+  examples[index].height = height
+  refreshKey.value += examples.length
+}
+const refreshKey = ref(0)
 </script>
 
 <template>
   <ul>
     <li v-for="(example, i) in examples" :key="i">
-      <PixelDrawExample :example="example" />
+      <PixelDrawExample
+        :example="example"
+        :key="refreshKey + i"
+        @change-resolution="(width, height) => changeResolution(i, width, height)"
+      />
     </li>
   </ul>
 </template>

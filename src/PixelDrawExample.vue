@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { onMounted, ref, watch, type Ref, reactive } from 'vue'
+import { onMounted, ref, watch, type Ref, reactive, defineEmits } from 'vue'
 import type Example from './Example'
 import MultiPath from './MultiPath.vue'
 const props = defineProps<{
   example: Example
 }>()
+
+const emits = defineEmits(['changeResolution'])
 
 const { width, height } = props.example
 const pixels = ref([]) as Ref<number[][]>
@@ -21,10 +23,10 @@ for (let i = 0; i < 100; i++) {
 }
 const properties = reactive({
   dpr: window.devicePixelRatio,
-  lineWidth: 1.5,
-  scale: 5,
+  lineWidth: 1,
+  scale: 10,
   imageRenderer: 'pixelated',
-  opacity: 1,
+  opacity: 255,
   lineCap: 'square',
   lineJoin: 'miter',
   globalCompositeOperation: 'source-over'
@@ -58,7 +60,7 @@ const draw = () => {
   const ctx = canvas.getContext('2d')
 
   const pathCanvas = document.createElement('canvas')
-  pathCanvas.style.setProperty('border', `1px solid #ddd`)
+  pathCanvas.style.setProperty('border', `1px solid #000`)
   pathCanvas.style.setProperty('width', `${(width / properties.dpr) * properties.scale}px`)
   pathCanvas.style.setProperty('height', `${(height / properties.dpr) * properties.scale}px`)
 
@@ -88,16 +90,10 @@ const draw = () => {
       path.forEach((point, i) => {
         if (i === 0) {
           ctx.moveTo(point[0], point[1])
-          pathCtx.moveTo(
-            (point[0] / properties.dpr) * properties.scale,
-            (point[1] / properties.dpr) * properties.scale
-          )
+          pathCtx.moveTo(point[0] * properties.scale, point[1] * properties.scale)
         } else {
           ctx.lineTo(point[0], point[1])
-          pathCtx.lineTo(
-            (point[0] / properties.dpr) * properties.scale,
-            (point[1] / properties.dpr) * properties.scale
-          )
+          pathCtx.lineTo(point[0] * properties.scale, point[1] * properties.scale)
         }
       })
       pathCtx.closePath()
@@ -150,6 +146,7 @@ const draw = () => {
     const data = new Uint8ClampedArray(clonePixels.flat())
     imageData.data.set(data)
     ctx2.putImageData(imageData, 0, 0)
+    clone.style.setProperty('border', `1px solid #000`)
     canvasWrapper.value?.appendChild(createElement(clone, 'Chosen pixels'))
     const pathsCanvas = createElement(pathCanvas, 'Polygon paths')
     pathsCanvas.style.setProperty('position', 'absolute')
@@ -176,6 +173,17 @@ const createElement = (element: HTMLElement, text: string) => {
 
 const animate = () => {
   draw()
+}
+
+const changeResolution = () => {
+  const width = Number((document.getElementById('width') as HTMLInputElement).value)
+  const height = Number((document.getElementById('height') as HTMLInputElement).value)
+  if (width > 1 && height > 1 && width < 51 && height < 51) {
+    emits('changeResolution', width, height)
+    animate()
+  } else {
+    alert('Width and height must be between 2 and 50')
+  }
 }
 
 watch(properties, () => {
@@ -207,6 +215,14 @@ watch(mode, (newMode) => {
 <template>
   <div class="container">
     <div>
+      <div style="margin-bottom: 10px">
+        <div style="display: inline-block">Resolution</div>
+        &nbsp;
+        <input id="width" type="number" min="2" max="50" :value="width" /> X
+        <input id="height" type="number" min="2" max="50" :value="height" />
+        &nbsp;
+        <button @click="changeResolution" style="min-width: 10px">Change</button>
+      </div>
       <button v-if="mode === 'normal'" @click="mode = 'overlap'">
         Bitmap and polygon paths overlap
       </button>
@@ -317,19 +333,17 @@ watch(mode, (newMode) => {
         </li>
         <li>
           <div class="item">pixels:</div>
-          <div class="item" ref="colors">
+          <br />
+          <div class="item" style="border: 1px solid #000; padding: 2px" ref="colors">
             <div
               v-for="(pixel, j) in pixels"
+              :title="`rgba( ${pixel[0]}, ${pixel[1]}, ${pixel[2]}, ${pixel[3]} )`"
               :key="j"
               :style="{
                 backgroundColor: `rgba(${pixel[0]}, ${pixel[1]}, ${pixel[2]}, ${(pixel[3] >= properties.opacity ? 255 : pixel[3]) / 255})`
               }"
               :class="pixel[3] === 0 ? '' : 'hasColor'"
-            >
-              <div v-for="i in 4" :key="i" class="color">
-                {{ i === 4 ? pixel[i - 1] : pixel[i - 1] }}
-              </div>
-            </div>
+            ></div>
           </div>
         </li>
       </ul>
@@ -362,7 +376,8 @@ ul {
   li {
     position: relative;
     font-size: 13px;
-    width: 100%;
+    max-width: 100%;
+    display: inline-block;
 
     &.form {
       display: grid;
@@ -387,14 +402,13 @@ ul {
     }
 
     div.item {
-      width: 100%;
       position: relative;
       display: grid;
       gap: 2px;
 
       div {
         overflow: hidden;
-        border: 1px solid #eee;
+        border: 1px solid gray;
         font-weight: bold;
         padding: 3px;
         font-size: 6px;
@@ -402,6 +416,11 @@ ul {
 
         &.hasColor {
           border: 1px solid #000;
+        }
+
+        &:hover {
+          cursor: pointer;
+          transform: scale(1.2);
         }
 
         div.color {
